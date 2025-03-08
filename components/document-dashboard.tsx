@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDocuments } from "@/hooks/use-documents";
 import { DocumentBox } from "@/components/document-box";
 import { UploadModal } from "@/components/upload-modal";
@@ -8,13 +8,20 @@ import { DocumentPreviewModal } from "@/components/document-preview-modal";
 import { toast } from "sonner";
 
 export function DocumentDashboard() {
-  const { documents, isLoaded, uploadDocument, getExtractions } =
-    useDocuments();
+  const {
+    documents,
+    isLoaded,
+    uploadDocument,
+    getExtractions,
+    getDocumentFileUrl,
+  } = useDocuments();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
     null
   );
+  const [documentFileUrl, setDocumentFileUrl] = useState<string | null>(null);
+  const uploadedFileRef = useRef<File | null>(null);
 
   // Handle document upload
   const handleUploadClick = (id: string) => {
@@ -24,17 +31,50 @@ export function DocumentDashboard() {
 
   // Handle document preview
   const handlePreviewClick = (id: string) => {
+    // Ensure we have the latest document data
+    const document = documents[id];
+
+    if (document) {
+      console.log("Opening preview for document:", document);
+
+      // Pre-generate the URL to ensure it's ready when the modal opens
+      const url = getDocumentFileUrl(id);
+      console.log("Pre-generated URL for preview:", url);
+      setDocumentFileUrl(url);
+    }
+
     setSelectedDocumentId(id);
     setPreviewModalOpen(true);
   };
 
   // Handle file upload
-  const handleFileUpload = (file: File, pageCount: number) => {
+  const handleFileUpload = async (file: File, pageCount: number) => {
     if (!selectedDocumentId) return;
 
     try {
-      uploadDocument(selectedDocumentId, file, pageCount);
+      // Store the file reference for direct URL creation
+      uploadedFileRef.current = file;
+
+      // Create a direct URL for the file
+      const directFileUrl = URL.createObjectURL(file);
+      setDocumentFileUrl(directFileUrl);
+
+      console.log("Created direct file URL:", directFileUrl);
+
+      // uploadDocument now returns a Promise
+      const document = await uploadDocument(
+        selectedDocumentId,
+        file,
+        pageCount
+      );
+      console.log("Document uploaded:", document);
       toast.success("Document uploaded successfully");
+
+      // Close the upload modal
+      setUploadModalOpen(false);
+
+      // Open the preview modal immediately with the direct file URL
+      setPreviewModalOpen(true);
     } catch (error) {
       toast.error("Failed to upload document");
       console.error(error);
@@ -115,6 +155,7 @@ export function DocumentDashboard() {
         onClose={() => setPreviewModalOpen(false)}
         document={selectedDocument}
         extractions={extractions}
+        fileUrl={documentFileUrl}
       />
     </div>
   );

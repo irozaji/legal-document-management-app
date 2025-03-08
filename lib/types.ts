@@ -3,6 +3,7 @@ export interface Document {
   name: string;
   uploadDate: string;
   fileUrl: string | null;
+  fileContent?: string | null;
 }
 
 export interface Extraction {

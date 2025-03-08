@@ -50,12 +50,27 @@ The application has one single dashboard page along with document upload and doc
   - Display this info on the corresponding document box
   - Close the modal
 
-### Document Details Modal
+### Document Preview Modal
 
-- Shows PDF preview on the left
-- Right panel displays mock extractions with page numbers
-- "Go To Page" buttons navigate to the specific page in the PDF
-- Mock extractions should have random page numbers
+- Trigger: Clicking on a document box with an uploaded file.
+- Layout:
+  - Header: Title displaying the selected document's name and an X button to close the modal.
+    - Left Panel: PDF preview of the uploaded document.
+    - Right Panel:
+      - List of mock extractions (e.g., Extraction 1, Extraction 2).
+      - Each extraction displays the page number it appears on.
+      - Provides a "Go To Page" button next to each extraction to navigate to the respective page in the PDF preview.
+- Features:
+
+  - PDF preview should be scrollable and support page navigation.
+  - "Go To Page" buttons should smoothly scroll the PDF preview to the specified
+    page.
+
+- Mock Extractions:
+  - Generate random page numbers for each extraction using a randomizer.
+  - Example:
+    - Extraction 1 - Page 3
+    - Extraction 2 - Page 7
 
 # Backend
 

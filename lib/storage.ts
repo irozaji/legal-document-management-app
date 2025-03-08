@@ -27,9 +27,21 @@ export const initializeDocuments = (): DocumentMap => {
 export const saveDocument = (slotId: string, document: Document): void => {
   if (typeof window === "undefined") return;
 
+  console.log("Saving document to localStorage:", slotId, document);
+
+  // Create a safe-to-serialize version of the document
+  // Remove the fileUrl property as it's not serializable (blob URLs)
+  const serializableDocument = { ...document };
+
   const documents = getDocuments();
-  documents[slotId] = document;
-  localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents));
+  documents[slotId] = serializableDocument;
+
+  try {
+    localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents));
+    console.log("Document saved successfully");
+  } catch (error) {
+    console.error("Error saving document to localStorage:", error);
+  }
 };
 
 // Get all documents from localStorage
@@ -37,7 +49,14 @@ export const getDocuments = (): DocumentMap => {
   if (typeof window === "undefined") return {};
 
   const storedDocuments = localStorage.getItem(DOCUMENTS_KEY);
-  return storedDocuments ? JSON.parse(storedDocuments) : initializeDocuments();
+  console.log("Raw stored documents from localStorage:", storedDocuments);
+
+  const parsedDocuments = storedDocuments
+    ? JSON.parse(storedDocuments)
+    : initializeDocuments();
+  console.log("Parsed documents from localStorage:", parsedDocuments);
+
+  return parsedDocuments;
 };
 
 // Generate mock extractions for a document

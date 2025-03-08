@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Document as PDFDocument, Page, pdfjs } from "react-pdf";
 import {
   Dialog,
@@ -11,11 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Document, Extraction } from "@/lib/types";
+import { useDocuments } from "@/hooks/use-documents";
 
 // Set up the worker for react-pdf
 if (typeof window !== "undefined") {
-  // Use a direct import approach
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 }
 
 interface DocumentPreviewModalProps {
@@ -23,6 +23,7 @@ interface DocumentPreviewModalProps {
   onClose: () => void;
   document: Document | null;
   extractions: Extraction[];
+  fileUrl?: string | null;
 }
 
 export function DocumentPreviewModal({
@@ -30,10 +31,13 @@ export function DocumentPreviewModal({
   onClose,
   document,
   extractions,
+  fileUrl: externalFileUrl,
 }: DocumentPreviewModalProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const { getDocumentFileUrl } = useDocuments();
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -46,7 +50,34 @@ export function DocumentPreviewModal({
     }
   };
 
-  console.log("document", document);
+  // Use external file URL if provided, otherwise generate one
+  useEffect(() => {
+    console.log("External file URL:", externalFileUrl);
+
+    if (externalFileUrl) {
+      console.log("Using external file URL");
+      setDocumentUrl(externalFileUrl);
+      setIsLoading(false);
+      return;
+    }
+
+    if (document) {
+      console.log("Document in modal:", document);
+      setIsLoading(true);
+
+      // If no external URL is provided, try to generate one from the document
+      const url = getDocumentFileUrl(document.id);
+      console.log("Generated document URL:", url);
+
+      if (url) {
+        setDocumentUrl(url);
+        setIsLoading(false);
+      } else {
+        console.error("Failed to get document URL");
+        setIsLoading(false);
+      }
+    }
+  }, [document, getDocumentFileUrl, externalFileUrl]);
 
   if (!document) return null;
 
@@ -61,10 +92,14 @@ export function DocumentPreviewModal({
           {/* PDF Viewer */}
           <div className="flex-grow border rounded-md overflow-hidden">
             <ScrollArea className="h-full w-full">
-              {document.fileUrl && (
-                <div className="flex justify-center p-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-40">
+                  <p>Loading PDF...</p>
+                </div>
+              ) : documentUrl ? (
+                <div className="flex justify-center p-4 h-full">
                   <PDFDocument
-                    file={document.fileUrl}
+                    file={documentUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     loading={
                       <div className="flex items-center justify-center h-40">
@@ -78,21 +113,30 @@ export function DocumentPreviewModal({
                         </p>
                       </div>
                     }
+                    className="max-h-full"
                   >
                     <Page
                       pageNumber={pageNumber}
-                      width={600}
+                      width={800}
+                      scale={1.2}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
+                      className="max-w-full"
                     />
                   </PDFDocument>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-40">
+                  <p className="text-red-500">
+                    Error loading PDF. Please try again.
+                  </p>
                 </div>
               )}
             </ScrollArea>
           </div>
 
           {/* Extractions Panel */}
-          <div className="w-100 border rounded-md">
+          <div className="w-80 border rounded-md">
             <div className="p-4 border-b">
               <h3 className="font-medium">Document Extractions</h3>
               <p className="text-xs text-muted-foreground mt-1">
@@ -127,7 +171,7 @@ export function DocumentPreviewModal({
         </div>
 
         {/* Page Navigation */}
-        <div className="flex items-center justify-between border-t pt-4 mt-auto">
+        <div className="flex items-center justify-between pt-4 mt-auto">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
