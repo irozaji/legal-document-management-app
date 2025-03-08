@@ -4,7 +4,7 @@ You're building a responsive Legal Document Management Interface using ReactJS t
 
 # Technical Stack
 
-Nextjs 15 App Router with React 19, react-pdf, shadcn ui.
+Nextjs 15 App Router with React 19, react-pdf, shadcn UI components
 
 # UI/UX Design Components
 
@@ -24,13 +24,12 @@ The application has one single dashboard page along with document upload and doc
 - Shows "Drag files here or click to select files" with a note that "only PDF files are allowed"
 - Has "Cancel" and "Submit" buttons
 
-3. Document Details Modal
+3. Document Preview Modal
 
 - Appears when clicking on a document box that already has a file
 - Split-screen layout:
   - Left panel: PDF preview with scrollable content
   - Right panel: List of mock extractions with page numbers and "Go To Page" buttons
-- Header shows the document name and has a close (X) button
 
 # Functional Specifications
 
@@ -39,7 +38,7 @@ The application has one single dashboard page along with document upload and doc
 - Nine responsive document boxes
 - Click behavior depends on whether a document is uploaded:
   - No document: Open Upload Modal
-  - Document exists: Open Document Details Modal
+  - Document exists: Open Document Preview Modal
 
 ### Upload Modal
 
@@ -63,7 +62,7 @@ The application has one single dashboard page along with document upload and doc
 We are eliminating a backend since this is just an MVP concept project.
 
 - Handle uploads in-browser:
-  When a user uploads a PDF, you'll handle the file directly in the React application.
+  When a user uploads a PDF, you'll handle the file directly on frontend.
 
 ## Data Storage
 
@@ -90,7 +89,7 @@ Generate mock extraction data directly in your frontend code:
 
 - PDF Handling:
 
-  - Use libraries like react-pdf for rendering PDF previews within the application.
+  - Use react-pdf for rendering PDF previews within the application.
   - Ensure that the "Go To Page" functionality interacts correctly with the PDF viewer
     to navigate to the specified page.
 
