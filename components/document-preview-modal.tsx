@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Document as PDFDocument, Page, pdfjs } from "react-pdf";
+import { Document as PDFDocument, Page } from "react-pdf";
 import {
   Dialog,
   DialogContent,
@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Document, Extraction } from "@/lib/types";
 import { useDocuments } from "@/hooks/use-documents";
+import { setupPdfWorker } from "@/lib/pdf-utils";
 
 // Set up the worker for react-pdf
 if (typeof window !== "undefined") {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  setupPdfWorker();
 }
 
 interface DocumentPreviewModalProps {
@@ -52,22 +53,17 @@ export function DocumentPreviewModal({
 
   // Use external file URL if provided, otherwise generate one
   useEffect(() => {
-    console.log("External file URL:", externalFileUrl);
-
     if (externalFileUrl) {
-      console.log("Using external file URL");
       setDocumentUrl(externalFileUrl);
       setIsLoading(false);
       return;
     }
 
     if (document) {
-      console.log("Document in modal:", document);
       setIsLoading(true);
 
       // If no external URL is provided, try to generate one from the document
       const url = getDocumentFileUrl(document.id);
-      console.log("Generated document URL:", url);
 
       if (url) {
         setDocumentUrl(url);

@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Document, DocumentMap, Extraction } from "@/lib/types";
-import { useCallback } from "react";
 import {
   getDocuments,
   saveDocument,
   getDocumentExtractions,
   generateMockExtractions,
+  generateExtractionsFromPdf,
   saveExtractions,
 } from "@/lib/storage";
 
@@ -45,7 +45,7 @@ export function useDocuments() {
       // Read the file as base64 and store it
       const reader = new FileReader();
 
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const base64Content = e.target?.result as string;
 
         // Create final document object with base64 content
@@ -54,26 +54,29 @@ export function useDocuments() {
           fileContent: base64Content,
         };
 
-        console.log("File read complete, updating document with content");
-
         // Update state with final document
         setDocuments((prev) => {
           const updatedDocuments = {
             ...prev,
             [slotId]: finalDocument,
           };
-          console.log("Updated documents state:", updatedDocuments);
           return updatedDocuments;
         });
 
         // Save to localStorage
         saveDocument(slotId, finalDocument);
 
-        // Generate and save mock extractions
-        const extractions = generateMockExtractions(slotId, pageCount);
-        saveExtractions(slotId, extractions);
+        // Generate and save real extractions from the PDF
+        try {
+          const extractions = await generateExtractionsFromPdf(slotId, file, pageCount);
+          saveExtractions(slotId, extractions);
+        } catch (error) {
+          console.error("Error generating real extractions, falling back to mock data:", error);
+          // Fallback to mock extractions if real extraction fails
+          const mockExtractions = generateMockExtractions(slotId, pageCount);
+          saveExtractions(slotId, mockExtractions);
+        }
 
-        console.log("Document fully processed with content:", finalDocument);
 
         // Resolve the promise with the final document
         resolve(finalDocument);
@@ -87,18 +90,12 @@ export function useDocuments() {
   const getDocumentFileUrl = useCallback(
     (documentId: string): string | null => {
       const document = documents[documentId];
-      console.log("Getting URL for document:", documentId, document);
 
       if (!document) {
-        console.log("Document not found");
         return null;
       }
 
       if (!document.fileContent) {
-        console.log(
-          "Document has no fileContent, using existing fileUrl:",
-          document.fileUrl
-        );
         return document.fileUrl;
       }
 
@@ -117,12 +114,10 @@ export function useDocuments() {
 
         const blob = new Blob([bytes], { type: contentType });
         const url = URL.createObjectURL(blob);
-        console.log("Created new blob URL:", url);
         return url;
       } catch (error) {
         console.error("Error creating blob URL:", error);
         // Fallback to the original fileUrl if available
-        console.log("Falling back to original fileUrl:", document.fileUrl);
         return document.fileUrl;
       }
     },
@@ -130,9 +125,10 @@ export function useDocuments() {
   );
 
   // Get extractions for a document
-  const getExtractions = (documentId: string): Extraction[] => {
-    return getDocumentExtractions(documentId);
-  };
+  const getExtractions = useCallback((documentId: string): Extraction[] => {
+    const extractions = getDocumentExtractions(documentId);
+    return extractions;
+  }, []);
 
   return {
     documents,

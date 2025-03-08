@@ -6,15 +6,11 @@ import { DocumentBox } from "@/components/document-box";
 import { UploadModal } from "@/components/upload-modal";
 import { DocumentPreviewModal } from "@/components/document-preview-modal";
 import { toast } from "sonner";
+import { Extraction } from "@/lib/types";
 
 export function DocumentDashboard() {
-  const {
-    documents,
-    isLoaded,
-    uploadDocument,
-    getExtractions,
-    getDocumentFileUrl,
-  } = useDocuments();
+  const { documents, uploadDocument, getExtractions, getDocumentFileUrl } =
+    useDocuments();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
@@ -22,6 +18,7 @@ export function DocumentDashboard() {
   );
   const [documentFileUrl, setDocumentFileUrl] = useState<string | null>(null);
   const uploadedFileRef = useRef<File | null>(null);
+  const [extractions, setExtractions] = useState<Extraction[]>([]);
 
   // Handle document upload
   const handleUploadClick = (id: string) => {
@@ -35,12 +32,14 @@ export function DocumentDashboard() {
     const document = documents[id];
 
     if (document) {
-      console.log("Opening preview for document:", document);
-
       // Pre-generate the URL to ensure it's ready when the modal opens
       const url = getDocumentFileUrl(id);
-      console.log("Pre-generated URL for preview:", url);
       setDocumentFileUrl(url);
+
+      // Get the latest extractions for this document
+      const documentExtractions = getExtractions(id);
+
+      setExtractions(documentExtractions);
     }
 
     setSelectedDocumentId(id);
@@ -59,16 +58,21 @@ export function DocumentDashboard() {
       const directFileUrl = URL.createObjectURL(file);
       setDocumentFileUrl(directFileUrl);
 
-      console.log("Created direct file URL:", directFileUrl);
+      // Show loading toast
+      const loadingToast = toast.loading(
+        "Processing document and extracting content..."
+      );
 
       // uploadDocument now returns a Promise
-      const document = await uploadDocument(
-        selectedDocumentId,
-        file,
-        pageCount
-      );
-      console.log("Document uploaded:", document);
-      toast.success("Document uploaded successfully");
+      await uploadDocument(selectedDocumentId, file, pageCount);
+
+      // Dismiss loading toast and show success
+      toast.dismiss(loadingToast);
+      toast.success("Document uploaded and processed successfully");
+
+      // Get the updated extractions for the document
+      const updatedExtractions = getExtractions(selectedDocumentId);
+      setExtractions(updatedExtractions);
 
       // Close the upload modal
       setUploadModalOpen(false);
@@ -76,8 +80,11 @@ export function DocumentDashboard() {
       // Open the preview modal immediately with the direct file URL
       setPreviewModalOpen(true);
     } catch (error) {
-      toast.error("Failed to upload document");
-      console.error(error);
+      toast.error("Failed to upload document", {
+        description:
+          "There was an error processing your document. Please try again.",
+      });
+      console.error("Document upload error:", error);
     }
   };
 
@@ -86,19 +93,27 @@ export function DocumentDashboard() {
     ? documents[selectedDocumentId]
     : null;
 
-  // Get extractions for the selected document
-  const extractions = selectedDocumentId
-    ? getExtractions(selectedDocumentId)
-    : [];
+  // Update extractions when selectedDocumentId changes
+  useEffect(() => {
+    if (selectedDocumentId) {
+      const documentExtractions = getExtractions(selectedDocumentId);
+
+      setExtractions(documentExtractions);
+    } else {
+      setExtractions([]);
+    }
+  }, [selectedDocumentId]);
 
   // Generate document boxes
   const documentBoxes = [];
   for (let i = 1; i <= 9; i++) {
     const id = `doc-${i}`;
+    const title = `Legal Document ${i}`;
     documentBoxes.push(
       <DocumentBox
         key={id}
         id={id}
+        title={title}
         document={documents[id] || null}
         onUploadClick={handleUploadClick}
         onPreviewClick={handlePreviewClick}
@@ -106,40 +121,51 @@ export function DocumentDashboard() {
     );
   }
 
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Loading documents...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <header className="mb-8 flex items-center">
+      <header className="mb-8 flex items-center justify-between bg-gradient-to-r from-slate-50 to-slate-100 p-4 rounded-lg shadow-sm">
         <div className="flex items-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mr-2"
-          >
-            <path d="M16 6H3a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h13" />
-            <path d="M18 3v18" />
-            <path d="M21 14l-3-3-3 3" />
-          </svg>
-          <h1 className="text-2xl font-bold">Legal Document Management</h1>
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg mr-3 shadow-sm">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-white"
+              aria-hidden="true"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+              <path d="M16 13H8" />
+              <path d="M16 17H8" />
+              <path d="M10 9H8" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">
+              Legal Document Management
+            </h1>
+            <p className="text-sm text-slate-500">
+              Manage and organize your legal documents
+            </p>
+          </div>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {documentBoxes}
+      <div className="flex flex-wrap -mx-3">
+        {documentBoxes.map((box, index) => (
+          <div
+            key={`box-wrapper-${index}`}
+            className="w-full sm:w-1/2 md:w-1/3 p-3 transition-all"
+          >
+            {box}
+          </div>
+        ))}
       </div>
 
       {/* Upload Modal */}
