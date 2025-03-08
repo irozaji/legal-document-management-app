@@ -1,0 +1,51 @@
+{
+  "typescript": {
+    "enabled": true,
+    "prefer_interfaces_over_types": true,
+    "avoid_enums_use_maps": true
+  },
+  "react": {
+    "components": "functional",
+    "prefer_useActionState_for_forms": true,
+    "prefer_use_hook_for_fetching": true,
+    "prefer_useTransition_for_ui": true,
+    "hooks": "prefer_server_side",
+    "memoization": true,
+    "error_boundaries": true
+  },
+  "nextjs": {
+    "app_router": true,
+    "optimize_web_vitals": true,
+    "optimize_caching": true,
+    "ssr_features": true,
+    "minimize_use_client": true,
+    "fetch_data_on_server": true,
+    "minimize_client_side_fetching": true
+  },
+  "important": {
+    "use_nextjs_server_functions": true,
+    "ssr_features": true
+  },
+  "code_comments": {
+    "write_comments": true,
+    "preserve_comments": "unless_no_longer_needed"
+  },
+  "github_process": {
+    "use_pull_requests": true,
+    "code_review_integration": true,
+    "continuous_integration": true,
+    "branching_strategy": "feature_based"
+  },
+  "styling": {
+    "shadcn_ui": true,
+    "tailwindcss": true,
+    "mobile_first_approach": true
+  },
+  "prisma_orm": {
+    "neon_postgresql": true
+  },
+  "performance": {
+    "lazy_loading": true,
+    "code_splitting": true
+  }
+}
