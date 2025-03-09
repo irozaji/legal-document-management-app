@@ -82,7 +82,7 @@ export async function DELETE(
 
     // Use a transaction to ensure all operations succeed or fail together
     try {
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         // Delete related extractions first (foreign key constraint)
         await tx.extraction.deleteMany({
           where: { documentId },

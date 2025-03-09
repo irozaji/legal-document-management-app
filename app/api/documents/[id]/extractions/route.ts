@@ -102,7 +102,7 @@ export async function POST(
 
     // Use transaction to ensure atomicity
     try {
-      const result = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx: any) => {
         // Delete existing extractions for this document
         await tx.extraction.deleteMany({
           where: { documentId },
