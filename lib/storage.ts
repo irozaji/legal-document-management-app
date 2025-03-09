@@ -1,58 +1,5 @@
-import { Document, DocumentMap, Extraction, ExtractionMap } from "./types";
+import {  Extraction,  } from "./types";
 import { setupPdfWorker } from "./pdf-utils";
-
-const DOCUMENTS_KEY = "legal-documents";
-const EXTRACTIONS_KEY = "document-extractions";
-
-// Initialize documents in localStorage
-export const initializeDocuments = (): DocumentMap => {
-  if (typeof window === "undefined") return {};
-
-  const storedDocuments = localStorage.getItem(DOCUMENTS_KEY);
-
-  if (storedDocuments) {
-    return JSON.parse(storedDocuments);
-  }
-
-  // Initialize with 9 empty document slots
-  const initialDocuments: DocumentMap = {};
-  for (let i = 1; i <= 9; i++) {
-    initialDocuments[`doc-${i}`] = null;
-  }
-
-  localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(initialDocuments));
-  return initialDocuments;
-};
-
-// Save document to localStorage
-export const saveDocument = (slotId: string, document: Document): void => {
-  if (typeof window === "undefined") return;
-
-  // Create a safe-to-serialize version of the document
-  const serializableDocument = { ...document };
-
-  const documents = getDocuments();
-  documents[slotId] = serializableDocument;
-
-  try {
-    localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents));
-  } catch (error) {
-    console.error("Error saving document to localStorage:", error);
-  }
-};
-
-// Get all documents from localStorage
-export const getDocuments = (): DocumentMap => {
-  if (typeof window === "undefined") return {};
-
-  const storedDocuments = localStorage.getItem(DOCUMENTS_KEY);
-
-  const parsedDocuments = storedDocuments
-    ? JSON.parse(storedDocuments)
-    : initializeDocuments();
-
-  return parsedDocuments;
-};
 
 // Generate extractions from PDF content
 export const generateExtractionsFromPdf = async (
@@ -138,7 +85,6 @@ export const generateExtractionsFromPdf = async (
         // Extract text content
         const textContent = await page.getTextContent();
         const pageText = textContent.items
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .map((item: any) => item.str)
           .join(" ")
           .trim();
@@ -221,7 +167,6 @@ export const generateExtractionsFromPdf = async (
           // Extract text content
           const textContent = await page.getTextContent();
           const pageText = textContent.items
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .map((item: any) => item.str)
             .join(" ")
             .trim();
@@ -308,28 +253,3 @@ export const generateMockExtractions = (
   return extractions;
 };
 
-// Save extractions to localStorage
-export const saveExtractions = (
-  documentId: string,
-  extractions: Extraction[]
-): void => {
-  if (typeof window === "undefined") return;
-
-  const allExtractions = getExtractions();
-  allExtractions[documentId] = extractions;
-  localStorage.setItem(EXTRACTIONS_KEY, JSON.stringify(allExtractions));
-};
-
-// Get all extractions from localStorage
-export const getExtractions = (): ExtractionMap => {
-  if (typeof window === "undefined") return {};
-
-  const storedExtractions = localStorage.getItem(EXTRACTIONS_KEY);
-  return storedExtractions ? JSON.parse(storedExtractions) : {};
-};
-
-// Get extractions for a specific document
-export const getDocumentExtractions = (documentId: string): Extraction[] => {
-  const allExtractions = getExtractions();
-  return allExtractions[documentId] || [];
-};

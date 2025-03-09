@@ -1,0 +1,456 @@
+openapi: 3.1.0
+info:
+  title: Document Management API
+  description: API for managing document uploads, downloads, and extractions
+  version: 1.0.0
+  contact:
+    name: API Support
+servers:
+  - url: /api
+    description: API base URL
+
+components:
+  schemas:
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the document
+        name:
+          type: string
+          description: Name of the document
+        uploadDate:
+          type: string
+          format: date-time
+          description: Date and time when the document was uploaded
+        fileUrl:
+          type: string
+          format: uri
+          description: URL to access the document
+        fileKey:
+          type: string
+          description: S3 key for the document
+        fileSize:
+          type: integer
+          description: Size of the file in bytes
+        mimeType:
+          type: string
+          description: MIME type of the file
+        slotId:
+          type: string
+          description: Slot identifier for the document
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the document record was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date and time when the document record was last updated
+      required:
+        - id
+        - name
+        - uploadDate
+        - fileUrl
+        - fileKey
+        - fileSize
+        - mimeType
+        - slotId
+
+    Extraction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the extraction
+        text:
+          type: string
+          description: Extracted text content
+        pageNumber:
+          type: integer
+          description: Page number where the text was extracted from
+        documentId:
+          type: string
+          format: uuid
+          description: ID of the document this extraction belongs to
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the extraction was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date and time when the extraction was last updated
+      required:
+        - id
+        - text
+        - pageNumber
+        - documentId
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            type:
+              type: string
+              description: Error type identifier
+              enum:
+                - VALIDATION_ERROR
+                - NOT_FOUND
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - CONFLICT
+                - INTERNAL_SERVER_ERROR
+                - BAD_REQUEST
+                - SERVICE_UNAVAILABLE
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional error details
+      required:
+        - error
+
+  parameters:
+    DocumentIdParam:
+      name: id
+      in: path
+      required: true
+      description: Document ID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+paths:
+  /documents:
+    get:
+      summary: List all documents
+      description: |
+        Retrieves a list of all documents.
+
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                description: Array of documents
+                items:
+                  $ref: "#/components/schemas/Document"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create a new document
+      description: Creates a new document record after uploading a file to S3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the document
+                fileKey:
+                  type: string
+                  description: S3 key for the uploaded file
+                fileSize:
+                  type: integer
+                  description: Size of the file in bytes
+                mimeType:
+                  type: string
+                  description: MIME type of the file (must be application/pdf)
+                slotId:
+                  type: string
+                  description: Slot identifier for the document
+              required:
+                - name
+                - fileKey
+                - fileSize
+                - mimeType
+                - slotId
+      responses:
+        "200":
+          description: Document created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /documents/{id}:
+    parameters:
+      - $ref: "#/components/parameters/DocumentIdParam"
+
+    get:
+      summary: Get a document by ID
+      description: Retrieves a specific document by its ID
+      responses:
+        "200":
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete a document
+      description: Deletes a document from the database and S3
+      responses:
+        "200":
+          description: Document deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  documentId:
+                    type: string
+                    format: uuid
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /documents/{id}/download-url:
+    parameters:
+      - $ref: "#/components/parameters/DocumentIdParam"
+
+    get:
+      summary: Get a download URL for a document
+      description: |
+        Generates a pre-signed URL for downloading or viewing a document.
+
+        The URL is valid for a limited time, specified by the expiresIn parameter.
+      parameters:
+        - name: expiresIn
+          in: query
+          description: URL expiration time in seconds (60-604800)
+          schema:
+            type: integer
+            default: 3600
+            minimum: 60
+            maximum: 604800
+        - name: detailed
+          in: query
+          description: Whether to return a detailed response
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Download URL generated successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    description: Simple response (legacy format)
+                    properties:
+                      url:
+                        type: string
+                        format: uri
+                        description: Pre-signed URL for downloading the document
+                  - type: object
+                    description: Detailed response
+                    properties:
+                      url:
+                        type: string
+                        format: uri
+                        description: Pre-signed URL for downloading the document
+                      expires:
+                        type: string
+                        format: date-time
+                        description: Expiration time of the URL
+                      documentId:
+                        type: string
+                        format: uuid
+                        description: Document ID
+                      documentName:
+                        type: string
+                        description: Document name
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /documents/{id}/extractions:
+    parameters:
+      - $ref: "#/components/parameters/DocumentIdParam"
+
+    get:
+      summary: Get extractions for a document
+      description: |
+        Retrieves text extractions for a specific document.
+
+      responses:
+        "200":
+          description: List of extractions
+          content:
+            application/json:
+              schema:
+                type: array
+                description: Array of extractions
+                items:
+                  $ref: "#/components/schemas/Extraction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create or update extractions for a document
+      description: |
+        Creates or updates text extractions for a document.
+
+        Existing extractions for the document will be deleted and replaced.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extractions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      text:
+                        type: string
+                        description: Extracted text content
+                      pageNumber:
+                        type: integer
+                        description: Page number where the text was extracted from
+                    required:
+                      - text
+                      - pageNumber
+              required:
+                - extractions
+      responses:
+        "200":
+          description: Extractions created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                    description: Number of extractions created
+                  message:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /documents/upload-url:
+    post:
+      summary: Get a pre-signed URL for uploading a document
+      description: |
+        Generates a pre-signed URL for uploading a document directly to S3.
+
+        The URL is valid for a limited time, specified by the expiresIn parameter.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fileName:
+                  type: string
+                  description: Name of the file to upload
+                contentType:
+                  type: string
+                  description: MIME type of the file (must be application/pdf)
+                expiresIn:
+                  type: integer
+                  description: URL expiration time in seconds (60-3600)
+                  default: 300
+                  minimum: 60
+                  maximum: 3600
+              required:
+                - fileName
+                - contentType
+      responses:
+        "200":
+          description: Upload URL generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    description: Pre-signed URL for uploading the document
+                  key:
+                    type: string
+                    description: S3 key for the uploaded file
+                  expires:
+                    type: string
+                    format: date-time
+                    description: Expiration time of the URL
+                  maxFileSize:
+                    type: integer
+                    description: Maximum allowed file size in bytes
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"

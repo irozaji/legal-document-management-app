@@ -1,4 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+/**
+ * Upload Modal Component
+ *
+ * This component provides a modal dialog for uploading PDF documents.
+ * It handles file selection, validation, and upload progress visualization.
+ *
+ * @module components/upload-modal
+ */
+
+import { useState, useRef, useEffect, memo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,20 +21,31 @@ import { toast } from "sonner";
 import { getPdfPageCount } from "@/lib/pdf-utils";
 import { Progress } from "@/components/ui/progress";
 
+/**
+ * Props for the UploadModal component
+ */
 interface UploadModalProps {
+  /** Whether the modal is open */
   isOpen: boolean;
+  /** Callback for when the modal is closed */
   onClose: () => void;
+  /** Callback for when a file is uploaded */
   onUpload: (file: File, pageCount: number) => void;
 }
 
-export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
+/**
+ * UploadModal component for handling document uploads
+ */
+function UploadModalComponent({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset state when modal is opened or closed
+  /**
+   * Reset state when modal is opened or closed
+   */
   useEffect(() => {
     if (!isOpen) {
       // Reset state when modal is closed
@@ -38,16 +58,25 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     }
   }, [isOpen]);
 
+  /**
+   * Handles drag over event for the drop zone
+   */
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
   };
 
+  /**
+   * Handles drag leave event for the drop zone
+   */
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
   };
 
+  /**
+   * Handles file drop event for the drop zone
+   */
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -58,12 +87,19 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     }
   };
 
+  /**
+   * Handles file selection from the file input
+   */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       validateAndSetFile(e.target.files[0]);
     }
   };
 
+  /**
+   * Validates a file and sets it as the selected file if valid
+   * @param file - The file to validate
+   */
   const validateAndSetFile = (file: File) => {
     if (file.type !== "application/pdf") {
       toast.error("Invalid file type", {
@@ -72,9 +108,24 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       return;
     }
 
+    // Check file size (max 10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File too large", {
+        description: `Maximum file size is 10MB. Your file is ${(
+          file.size /
+          (1024 * 1024)
+        ).toFixed(2)}MB.`,
+      });
+      return;
+    }
+
     setFile(file);
   };
 
+  /**
+   * Handles the upload process when the upload button is clicked
+   */
   const handleUpload = async () => {
     if (!file) return;
 
@@ -91,9 +142,6 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         });
       }, 200);
 
-      // Add shorter artificial delay to simulate processing
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
       // Get the actual page count from the PDF using our utility function
       const pageCount = await getPdfPageCount(file);
 
@@ -101,41 +149,35 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       clearInterval(progressInterval);
       setUploadProgress(95);
 
-      // Brief delay before completing
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
       // Set progress to 100% and immediately process the upload
       setUploadProgress(100);
 
       // Process the upload immediately
       onUpload(file, pageCount);
-
-      // Close the modal after a very brief delay to show 100%
-      setTimeout(() => {
-        setFile(null);
-        setUploadProgress(0);
-        onClose();
-      }, 200);
     } catch (error) {
       console.error("Error processing PDF:", error);
       toast.error("Upload failed", {
         description: "There was an error processing your PDF file",
       });
       setUploadProgress(0);
-    } finally {
-      // We don't reset isLoading here because we want the button to stay disabled
-      // until the modal is closed. This prevents clicking the button again.
-      // setIsLoading will be reset when the modal is reopened.
     }
   };
 
+  /**
+   * Handles canceling the upload process
+   */
   const handleCancel = () => {
     setFile(null);
     setUploadProgress(0);
     onClose();
   };
 
-  const formatFileSize = (bytes: number) => {
+  /**
+   * Formats a file size in bytes to a human-readable string
+   * @param bytes - The file size in bytes
+   * @returns A formatted string representation of the file size
+   */
+  const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + " bytes";
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
     else return (bytes / 1048576).toFixed(2) + " MB";
@@ -301,3 +343,8 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     </Dialog>
   );
 }
+
+/**
+ * Memoized version of the UploadModal component for better performance
+ */
+export const UploadModal = memo(UploadModalComponent);
